@@ -118,6 +118,7 @@ console.log(abc);
 
 //Enter Station Points:
 var Threshold=0.05
+var Threshold_U=0.1
 var stations = map.selectAll("circle").data(graphData)
 stations  
     .enter().append("circle")
@@ -189,14 +190,14 @@ function contains(list,element) {
 }; 
 
 //Enter Station Text:
-
+/*
 stations
   .enter().append("text")
   .attr("x", function(d) { return projection([d.longitude,d.latitude])[0]; })
   .attr("y", function(d) { return projection([d.longitude,d.latitude])[1]; })
   .attr("font-size",8)
   .text(function(d) { return d.id});
- 
+*/ 
 
 //Enter Bike Paths:
 projectionM = d3.geoMercator().fitExtent([[margin, margin], [width - margin, height - margin]], graphData3);
@@ -234,6 +235,7 @@ var area = d3.area()
 
 k=0;
 function update_small(click_ids) {
+    //click_ids = [2,3,5,192];
     var filters = {"Station":click_ids};
     f_data_in = filter(graphData5,filters);
 
@@ -273,7 +275,7 @@ function test_funct(data){
   var svg2 = d3.select("body").selectAll("svg")
       .data(data)
     .enter().append("svg")
-      //.attr("id", count)  
+      .attr("id", 0)  
       .attr("width", width2 + margin2.left + margin2.right)
       .attr("height", height2 + margin2.top + margin2.bottom)
     .append("g")
@@ -324,6 +326,7 @@ svg2.selectAll(".line")
       .text(function(d) { return d.key; });
       
 }
+
 
 function brushended() {    //Inspiration: https://bl.ocks.org/mbostock/f48fcdb929a620ed97877e4678ab15e6
   var s = d3.event.selection;
