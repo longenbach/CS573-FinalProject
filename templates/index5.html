@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<title>Dashboard</title>
+
+<head>
+  <meta charset="utf-8">
+  <style> /* set the CSS */
+    body { font: 12px Arial;}
+    path {
+      stroke-width: 2;
+      fill: none;
+    }
+    .axis path, .axis line {
+      fill: none;
+      stroke: grey;
+      stroke-width: 1;
+      shape-rendering: crispEdges;
+    }
+    .area {
+      fill: #F0F8FF;
+      stroke-width: 0;
+    }
+
+    .line {
+    fill: none;
+    stroke: black;
+    stroke-width: 2;
+    }
+    .map{
+    fill: #00b9e7;
+    }
+
+    .In_line {
+    fill: none;
+    stroke: green;
+    stroke-width: 2;
+    }
+
+    .Out_line {
+    fill: none;
+    stroke: red;
+    stroke-width: 2;
+    }
+    .area {
+  fill: #e7e7e7;
+    }
+
+    .line {
+  fill: none;
+  stroke: #000;
+  stroke-width: 1.5px;
+}
+
+.line.above {
+  stroke: #f00;
+}
+
+  </style>
+</head>
+
+<body>
+<h1><a>Divvy Station Map:</a></h1>
+
+<svg width="400" height="800"></svg>
+<script src="http://d3js.org/d3.v4.min.js"></script>
+<script>
+
+// Map SVG Canvas:
+var svg = d3.select("svg"),
+    margin = {top: 0, right: 0, bottom: 0, left: 0},
+    width = +svg.attr("width") 
+    height = +svg.attr("height") 
+var svg = svg.attr("transform", "translate(" + margin.left + "," + margin.top + ")")    
+var map = svg.append("g");
+var base_map = svg.append("g");
+
+// Varibles:
+var long_centroid = -87.66204512499999;
+var lat_centroid = 41.90075;
+var zoom0 = 95000;
+
+// Station Points Projection:
+var projection = d3.geoMercator()
+    .scale(zoom0)
+    .center([long_centroid,lat_centroid])
+    .translate([width/2,height/2]);
+
+// Zoom Brush    
+var brush = d3.brush()
+    .extent([[0, 0], [width,height]])
+    .on("end", brushended),
+    idleTimeout,
+    idleDelay = 350;
+    
+svg.append("g")
+    .attr("class", "brush")
+    .call(brush);
+
+// Load Data:
+var graphData = {{ data.chart_data | safe }}
+var graphData2 = {{ data.chart_data2 | safe }}
+var graphData3 = {{ data.chart_data3 | safe }}
+var graphData4 = {{ data.chart_data4 | safe }}
+var graphData5 = {{ data.chart_data5 | safe }}
+var gr = {{ data.f | safe }}
+
+// Current Flow:
+console.log(graphData[0].lastCommunicationTime);
+time = graphData[0].lastCommunicationTime
+time = time.split(" ")
+time = time[1].split(":")
+hour = parseFloat(time[0])
+console.log(time);
+//y = parseFloat(time[0]) + parseFloat(time[1]/60) + parseFloat(time[2]/3600)
+var hour_filter = {"Hour":[hour]};
+abc = filter(graphData5,hour_filter)
+console.log(abc);
+
+//Enter Station Points:
+var Threshold=0.05
+var stations = map.selectAll("circle").data(graphData)
+stations  
+    .enter().append("circle")
+    .attr("cx", function(d) {return projection([d.longitude,d.latitude])[0]})
+    .attr("cy", function(d) {return projection([d.longitude,d.latitude])[1]})
+    .attr("r", function(d) {return 0.2*d.totalDocks}) //availableBikes
+    .style("fill",function(d){ 
+        station_i = d.id
+        var hmm = abc.filter(function(d, i) {return parseInt(d.Station) == station_i  ;});
+        if (d.availableBikes > d.totalDocks*Threshold  & d.availableBikes < d.totalDocks - d.totalDocks*Threshold ) {
+        return "green";
+        } else if (d.availableBikes < d.totalDocks*Threshold ) {
+            if (hmm[0].Proportion > 0){
+            return "yellow";    
+            }
+            return "red";
+        }
+        if (hmm[0].Proportion < 0){
+            return "purple";    
+            }
+        return "blue";
+        })
+        .on("click", clicked);
+
+click_ids = [];
+function clicked(d, i) {
+    pos = contains(click_ids,d.id)
+    if (pos==609){
+        click_ids.push(d.id)
+        d3.select(this).transition()
+            .style("fill", "black")
+            .attr("r", 10);
+    }    
+    else{
+        click_ids[pos] = null;
+        d3.select(this).transition()
+            .attr("r", function(d) {return 0.2*d.totalDocks})
+            .style("fill",function(d){ 
+                station_i = d.id
+                var hmm = abc.filter(function(d, i) {return parseInt(d.Station) == station_i  ;});
+                if (d.availableBikes > d.totalDocks*Threshold  & d.availableBikes < d.totalDocks - d.totalDocks*Threshold ) {
+                return "green";
+                } else if (d.availableBikes < d.totalDocks*Threshold ) {
+                    if (hmm[0].Proportion > 0){
+                    return "yellow";    
+                    }
+                    return "red";
+                }
+                if (hmm[0].Proportion < 0){
+                    return "purple";    
+                    }
+                return "blue";
+                });
+    }
+    console.log(click_ids);
+    update_small(click_ids);    
+};
+
+function contains(list,element) {
+    if (list.length==0){return 609;}  
+    var step;
+    for (step=0; step<list.length; step++){
+        if(element==list[step]){
+
+        return step;
+        }     
+    }
+    return 609;
+}; 
+
+//Enter Station Text:
+
+stations
+  .enter().append("text")
+  .attr("x", function(d) { return projection([d.longitude,d.latitude])[0]; })
+  .attr("y", function(d) { return projection([d.longitude,d.latitude])[1]; })
+  .attr("font-size",8)
+  .text(function(d) { return d.id});
+ 
+
+//Enter Bike Paths:
+projectionM = d3.geoMercator().fitExtent([[margin, margin], [width - margin, height - margin]], graphData3);
+pathGeneratorM = d3.geoPath().projection(projection);
+
+base_map
+    .append('path')
+    .datum(graphData3)
+    .attr('d', pathGeneratorM)
+    .attr('fill', 'none')
+    .attr('stroke', '#999999')
+    .attr('stroke-width', '2')
+    .attr('opacity',0.6);
+
+// 2nd Chart
+var margin2 = {top: 20, right: 20, bottom: 20, left: 20},
+    width2 = 600 - margin2.left - margin2.right,
+    height2 = 100 - margin2.top - margin2.bottom;
+
+// Define scales
+var	X_scale = d3.scaleLinear().range([0, width2]);
+var	Y_scale = d3.scaleLinear().range([height2, 0]);
+
+// Define the line
+var valueline = d3.line()
+    .curve(d3.curveMonotoneX)
+    .x(function(d) { return X_scale(d.Hour); })
+    .y(function(d) { return Y_scale(d.Proportion); });
+
+// Define area
+var area = d3.area()
+    .x(function(d) { return X_scale(d.Hour); })
+    .y0(height2)
+    .y1(function(d) { return Y_scale(d.Proportion); });    
+
+k=0;
+function update_small(click_ids) {
+    var filters = {"Station":click_ids};
+    f_data_in = filter(graphData5,filters);
+
+    var stats = d3.nest()
+        .key(function(d) { return d.Station; })
+        .entries(f_data_in);
+
+    stats.forEach(function(s) {
+        s.maxProp = d3.max(s.values, function(d) { return d.Proportion; });
+        s.minProp = d3.min(s.values, function(d) { return d.Proportion; });
+        });
+    console.log(stats);
+    test_funct(stats);
+};
+
+function filter(data,filters){
+    data = data.filter(function(row) {
+    return ['Station','Hour',' Proportion'].reduce(function(pass, column) {
+        return pass && (
+            !filters[column] ||
+                row[column] === filters[column] ||
+                filters[column].indexOf(row[column]) >= 0
+            );
+    }, true);
+    })
+  return data
+  };
+
+function test_funct(data){
+    
+    X_scale.domain([
+        d3.min(data, function(s) { return s.values[0].Hour; }),
+        d3.max(data, function(s) { return s.values[s.values.length - 1].Hour; })
+    ]);
+  
+  // Add an SVG element for each symbol, with the desired dimensions and margin.
+  var svg2 = d3.select("body").selectAll("svg")
+      .data(data)
+    .enter().append("svg")
+      //.attr("id", count)  
+      .attr("width", width2 + margin2.left + margin2.right)
+      .attr("height", height2 + margin2.top + margin2.bottom)
+    .append("g")
+      .attr("transform", "translate(" + margin2.left + "," + margin2.top + ")");
+    
+    svg2.append("line")
+      .attr("x1", 0)
+      .attr("y1", height2 / 2)
+      .attr("x2", width2)
+      .attr("y2", height2 / 2)
+      .attr("stroke","gray")
+      .attr("stroke-width",1);
+     
+    svg2.append("clipPath")
+        .attr("id", "clip-above")
+        .append("rect")
+        .attr("width", width2)
+        .attr("height", Y_scale(0));
+
+    svg2.append("clipPath")
+        .attr("id", "clip-below")
+        .append("rect")
+        .attr("y", Y_scale(0))
+        .attr("width", width2)
+        .attr("height", height2 - Y_scale(0));
+
+/*
+  // Add the area path elements. Note: the y-domain is set per element.
+svg2.selectAll(".line")
+      .data(["above", "below"])
+    .enter().append("path")
+      .attr("class", function(d) { return "line " + d; })
+      .attr("clip-path", function(d) { return "url(#clip-" + d + ")"; })
+      .datum(data)
+      .attr("d", function(d) { Y_scale.domain([d.minProp, d.maxProp]); return valueline(d.values); });
+*/
+  // Add the line path elements. Note: the y-domain is set per element.
+
+  svg2.append("path")
+      .attr("class", "line")
+      .attr("opacity",0.8)
+      .attr("d", function(d) { Y_scale.domain([d.minProp, d.maxProp]); return valueline(d.values); });
+  // Add a small label for the symbol name.
+  svg2.append("text")
+      .attr("x", width2 - 6)
+      .attr("y", height2 - 6)
+      .style("text-anchor", "end")
+      .text(function(d) { return d.key; });
+      
+}
+
+function brushended() {    //Inspiration: https://bl.ocks.org/mbostock/f48fcdb929a620ed97877e4678ab15e6
+  var s = d3.event.selection;
+  if (!s) {
+    if (!idleTimeout) return idleTimeout = setTimeout(idled, idleDelay);
+    projection.center([long_centroid,lat_centroid]); 
+    projection.scale(zoom0); 
+    console.log("click");
+    svg.selectAll('rect').attr("transform", "translate(" + 300 + "," -700 + ")"); 
+  } else {
+    console.log("zoom");  
+    x1 = s[0][0]; //Longitude
+    x2 = s[1][0]; 
+    y1 = s[0][1]; //Latitude
+    y2 = s[1][1]; 
+    x_c = x2 - ((x2-x1)/2);
+    y_c = y1 - ((y1-y2)/2);  
+    pro = ((height*width)/((x1-x2)*(y1-y2))) 
+    zf = Math.log(pro)+1
+    projection.center(projection.invert([x_c,y_c]));
+    projection.scale(zoom0*zf);
+    svg.select(".brush").call(brush.move, null);
+    svg.selectAll('rect').attr("transform", "translate(" + -300 + "," + 700 + ")");   
+  }
+  zoom();
+}
+
+function idled() {
+  idleTimeout = null;
+}
+
+function zoom() {
+  var t = svg.transition().duration(750);
+  map.selectAll("circle").transition(t)
+      .attr("cx", function(d) { return projection([d.longitude,d.latitude])[0]; })
+      .attr("cy", function(d) { return projection([d.longitude,d.latitude])[1]; });
+  map.selectAll("text").transition(t)
+      .attr("x", function(d) { return projection([d.longitude,d.latitude])[0]; })
+      .attr("y", function(d) { return projection([d.longitude,d.latitude])[1]; });  
+  base_map.selectAll('path').transition(t)
+      .attr('d', pathGeneratorM)  
+   
+}
+
+</script>
+
+
+
+</body>
+</html>

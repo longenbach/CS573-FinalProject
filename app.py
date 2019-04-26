@@ -12,28 +12,38 @@ app = Flask(__name__)
 #set up route flask ,
 
 #Live Station Data:
-url = 'https://feeds.divvybikes.com/stations/stations.json'
-r  = requests.get(url)
-r_load = json.loads(r.text)
-print(r_load['executionTime'])
-df = pd.DataFrame.from_records(r_load['stationBeanList'])[['id','availableBikes','availableDocks','totalDocks','status','lastCommunicationTime','is_renting','longitude','latitude']]
-chart_data = df.to_dict(orient='records')
-chart_data = json.dumps(chart_data, indent=2)
+
 f = 64
-#Test CSV Data
-df2 = pd.read_csv('data.csv').drop('Open', axis=1)
+#In CSV Data
+df2 = pd.read_csv('Historical_Bikes_In.csv')#,dtype={"Station":object})
 chart_data2 = df2.to_dict(orient='records')
 chart_data2 = json.dumps(chart_data2, indent=2)
+
+#Out CSV Data
+df4 = pd.read_csv('Historical_Bikes_Out.csv')#,dtype={"Station":object})
+chart_data4 = df4.to_dict(orient='records')
+chart_data4 = json.dumps(chart_data4, indent=2)
+
+#In - Out CSV Data
+df5 = pd.read_csv('Historical_Bikes_In_-_Out.csv')#,dtype={"Station":object})
+chart_data5 = df5.to_dict(orient='records')
+chart_data5 = json.dumps(chart_data5, indent=2)
 
 #Bike Path GeoJson Data:
 df3 = gpd.read_file('Chicago_BikePaths.geojson')
 df3 = df3.to_json()
 
-data = {'chart_data': chart_data,'chart_data2': chart_data2,'chart_data3': df3}
-
 @app.route("/")
 def index():
-    return render_template("index3.html", data=data,f=f)
+	url = 'https://feeds.divvybikes.com/stations/stations.json'
+	r  = requests.get(url)
+	r_load = json.loads(r.text)
+	f = r_load['executionTime']
+	df = pd.DataFrame.from_records(r_load['stationBeanList'])[['id','availableBikes','availableDocks','totalDocks','status','lastCommunicationTime','is_renting','longitude','latitude']]
+	chart_data = df.to_dict(orient='records')
+	chart_data = json.dumps(chart_data, indent=2)
+	data = {'chart_data': chart_data,'chart_data2': chart_data2,'chart_data3': df3,'chart_data4': chart_data4,'chart_data5': chart_data5}
+	return render_template("index5.html", data=data,f=f)
 
 @app.route("/Suggested_Route", methods=['POST','GET'])
 def optimal_path():
@@ -41,9 +51,9 @@ def optimal_path():
 		s=request.form.get('start_station',None)
 		ff=request.form['end_station']
         
-		return render_template('index3.html', f=s, last_name=ff,data=data)
+		return render_template('index5.html', f=s, last_name=ff,data=data)
 	else:
-		return render_template('index3.html', data=data,f=f)
+		return render_template('index5.html', data=data)
 
 if __name__ == "__main__":
     app.run(debug=True)
