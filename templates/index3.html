@@ -131,9 +131,9 @@ var tempData = [
 var graphData = {{ data.chart_data | safe }}
 var graphData2 = {{ data.chart_data2 | safe }}
 var graphData3 = {{ data.chart_data3 | safe }}
-//console.log(graphData);
-//console.log(graphData2);
-//console.log(graphData3);
+console.log(graphData);
+console.log(graphData2);
+console.log(graphData3);
 
 //Enter Station Points:
 var stations = map.selectAll("circle").data(graphData)
@@ -141,7 +141,10 @@ stations
     .enter().append("circle")
     .attr("cx", function(d) {return projection([d.longitude,d.latitude])[0]})
     .attr("cy", function(d) {return projection([d.longitude,d.latitude])[1]})
-    .attr("r", function(d) {return 0.1*d.totalDocks});
+    .attr("r", function(d) {return 0.1*d.totalDocks})
+    .attr("pointer-events", "all")
+    .on("mouseover",abc);  
+   
 
 //Enter Bike Paths:
 projectionM = d3.geoMercator().fitExtent([[margin, margin], [width - margin, height - margin]], graphData3);
@@ -166,6 +169,34 @@ d3.select("#End_id2").on("input", function() {
     end_i = +this.value;
     update_(start_i,end_i);
     });
+
+
+function abc(d) {
+  d3.select(this)
+  .attr("r", 10)
+  .style("fill", "red");
+  console.log(this);
+  }
+
+function handleMouseOver(d, i) {  // Add interactivity
+      console.log(this);
+      // Use D3 to select element, change color and size
+      d3.select(this).attr({
+        fill: "orange",
+        r: 0.1*d.totalDocks * 2
+      });
+
+      // Specify where to put label of text
+      stations.append("text").attr({
+          //id: "t" + d.x + "-" + d.y + "-" + i,  // Create an id for text so we can select it later for removing on mouseout
+          x: function() { return projection([d.longitude,d.latitude])[0]; },
+          y: function() { return projection([d.longitude,d.latitude])[1]; }
+      })
+      .text(function() {
+        return [d.longitude,d.latitude];  // Value of the text
+      });
+    }
+
 
 //Filter Points by Selected Stations:
 function path_(start_i,end_i){
